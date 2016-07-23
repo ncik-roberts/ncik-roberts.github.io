@@ -47,7 +47,7 @@ a {
   color: #2a7ae2
 }
 
-a:hover {
+#portfolio a:hover {
   text-decoration: underline;
 }
 
@@ -84,7 +84,32 @@ div .column:hover {
   margin-top: -14em;
 }
 
-footer ul {
-  padding: 0px;
-  list-style: none;
+#contact-icons {
+  margin: 0.5em 0;
+}
+
+#contact-icons li {
+ display: inline;
+ list-style-image: none;
+ padding: 0 1em;
+}
+
+#footer {
+  margin-top: 14em;
+  font-size: 0.8em;
+  color: #e6e6e6;
+  text-align: center;
+  margin-bottom: 1px solid #efefef;
+}
+
+#footer p {
+  margin: 0;
+}
+
+#footer a {
+  color: #b3b3b3;
+}
+
+#footer:hover {
+  color: #808080;
 }

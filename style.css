@@ -100,6 +100,8 @@ div .column:hover {
   color: #e6e6e6;
   text-align: center;
   margin-bottom: 1px solid #efefef;
+  border-top: 1px solid #efefef;
+  padding-top: 1em;
 }
 
 #footer p {
@@ -112,4 +114,5 @@ div .column:hover {
 
 #footer:hover {
   color: #808080;
+  border-top: 1px solid #cccccc;
 }

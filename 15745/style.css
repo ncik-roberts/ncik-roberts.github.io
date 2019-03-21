@@ -19,15 +19,13 @@ header {
 }
 
 h1 {
-  font-size: 3.0em;
+  font-size: 2.2em;
   margin-bottom: 0;
   color: #092243;
 }
 
 h2 {
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #cfcfcf;
+  color: #6f6f6f;
   margin-top: 0;
 }
 
@@ -40,19 +38,12 @@ h3 {
 h4 {
   font-weight: normal;
   font-style: italic;
+  margin-bottom: 0.4em;
 }
 
 a {
   text-decoration: none;
   color: #2a7ae2
-}
-
-#portfolio a:hover {
-  text-decoration: underline;
-}
-
-a:active {
-  font-style: italic;
 }
 
 ul {
@@ -79,13 +70,10 @@ div .column:hover {
   border: 1px solid #cccccc;
 }
 
-#contact {
-  display: block;
-  margin-top: -14em;
-}
-
 #contact-icons {
   margin: 0.5em 0;
+  text-align: center;
+  padding: 0 2em;
 }
 
 #contact-icons li {
@@ -116,3 +104,4 @@ div .column:hover {
   color: #808080;
   border-top: 1px solid #cccccc;
 }
+

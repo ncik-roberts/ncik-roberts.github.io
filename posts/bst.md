@@ -103,14 +103,20 @@ let rec exists : type a. (a -> bool) -> a complete_tree -> bool =
 In addition to the fact of whether an element satisfying a predicate exists, you might also want to obtain the element itself that witnesses the satisfied predicate. In the `exists` function, when constructing a predicate `p` for the recursive call, it was sufficient to lift the previous predicate to be a predicate over pairs of elements, but now I must recover the additional information of _which element satisfied the predicate_. To do this, I write a helper function where, instead of just reporting a boolean value, the accumulated function reports the satisfying element.
 
 ```ocaml
+let (<|>) a b = match a with
+  | Some _ -> a
+  | _ -> b ()
+
 let rec find' (f : 'a -> 'b option) (t : 'a complete_tree) : 'b option =
   match t with
   | End -> None
   | Depth (x, rest) ->
-      f x <|> find' (fun (l, r) -> f l <|> f r) rest
+    f x <|> fun () ->
+      let f' (l, r) = f l <|> fun () -> f r in
+      find' f' rest
 ```
 
-Here, `<|>` is the choice operator, perhaps familiar from Haskell, defined as `a <|> b = match a with Some _ -> a | _ -> b`.
+Here, `<|>` is the (short-circuiting) choice operator, perhaps familiar from Haskell.
 
 Now, to complete this exercise, given a predicate, I instantiate the `find'` function with an appropriate function argument. (I also give `find'` an appropriately-polymorphic type. Since 'b does not vary at the recursive call, it does not have to be listed as an explicit type argument.)
 
@@ -118,10 +124,10 @@ Now, to complete this exercise, given a predicate, I instantiate the `find'` fun
 let rec find' : type a. (a -> 'b option) -> a complete_tree -> 'b option =
   fun f t -> match t with
     | End -> None
-    | Depth (x, xs) ->
-        f x <|>
-          let f' (l, r) = f l <|> f r in
-          find' f' xs
+    | Depth (x, rest) ->
+      f x <|> fun () ->
+        let f' (l, r) = f l <|> fun () -> f r in
+        find' f' xs
 
 let find p = find' (fun x -> if p x then Some x else None)
 ```

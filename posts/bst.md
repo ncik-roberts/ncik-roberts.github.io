@@ -27,12 +27,12 @@ let rec size = function
 
 let rec size_complete = function
   | End -> 0
-  | Depth (_, rest) -> 1 + 2 * rest
+  | Depth (_, rest) -> 1 + 2 * size_complete rest
 ```
 
 `size` is linear in the number of elements, whereas `size_complete` is logarithmic.
 
-## Non-uniform recursion
+## Polymorphic recursion
 
 It's possible to skip this section if you're just interested in seeing some functions
 written over the `complete_tree` type. Read this section only if you're confused why
@@ -45,9 +45,24 @@ Error: This expression has type ('a * 'a) complete_tree
               The type variable 'a occurs inside 'a * 'a
 ```
 
-This error results from an asymmetry in the definition of OCaml (and, in Okasaki's case, of SML): non&ndash;uniformly recursive types are permitted, but
-non&ndash;uniformly recursive functions are much harder to work with, and, in the case of SML, disallowed.
+This error results from an asymmetry in the definition of OCaml (and, in Okasaki's case, of SML): non&ndash;uniformly recursive types are permitted, but non&ndash;uniformly recursive functions are much harder to work with, and, in the case of SML, disallowed.
 
-What do I mean by "uniformly recursive?"
-A uniformly recursive type is a recursive, universal type that is only ever recursively instantiated with the parameter to the universal type. It is therefore just a universal recursive type, in that order. Entering into the language of type theory, we may say that an OCaml type definition of the form `type 'a t = <texp>` binds to identifier `t` a type of the form ![equation](https://latex.codecogs.com/png.latex?\mu t.\forall \alpha.\tau), where ![equation](https://latex.codecogs.com/png.latex?\alpha) and ![equation](https://latex.codecogs.com/png.latex?t) are free in ![equation](https://latex.codecogs.com/png.latex?\tau). (In this section, I alternate between OCaml and mathematical notation as appropriate. The OCaml type variable `'a` is written as ![equation](https://latex.codecogs.com/png.latex?\alpha) in mathematical notation, and I use ![equation](https://latex.codecogs.com/png.latex?\tau) to signify an arbitrary type expression, which I normally write as `<texp>` in the OCaml notation.) Within the type expression, the type variable `t` will only ever appear as the immediate right-hand side of a type application `<texp> t` (where, since OCaml and SML mirror the notation for type application, this would mathematically be notated as ![equation](https://latex.codecogs.com/png.latex?t[\tau])). In a uniformly recursive type, the argument (left-hand side in OCaml notation; right-hand side in mathematical notation) to a type application is only ever the type parameter to the universal type, `'a` (or ![equation](https://latex.codecogs.com/png.latex?\alpha)). A uniformly-recursive type ![equation](https://latex.codecogs.com/png.latex?\mu t.\forall \alpha.\tau) is therefore isomorphic to the type ![equation](https://latex.codecogs.com/png.latex?\forall \alpha. \mu t. \tau), since in the former, we can replace
-all applications `'a t` with just `t` to obtain the latter.
+Put simply: `tree` is a uniformly recursive type because its only recursive instantiations take as argument the original type variable `'a` that was abstracted over. In contrast, `complete_tree` is not uniformly recursive, because it is recursively applied to the type argument `('a * 'a)`, which differs from the type variable `'a` that was abstracted over.
+
+The easy definition of a non&ndash;uniformly recursive type stands in contrast to the encumberments of polymorphic recursion. A polymorphic, recursive function in SML may only be recursively instantiated with the same type argument provided by the external client. For example, the definition of `size_complete` is disallowed because, if the external client calls `size_complete` on a term of type `'a complete_tree`, the recursive call must be instantiated at type `('a * 'a) complete_tree`. This is owed to an interaction with Hindley-Milner type inference: in the presence of polymorphic recursion, type inference is undecidable.
+
+(For the interested reader, it might be illustrative to see that, in the absence of type annotations, OCaml and SML treat the definition of `fun f x = f x` as the term
+![equation](https://latex.codecogs.com/png.latex?\Lambda%20t.%20\texttt{fix}%20f%20%3A%20t%20\rightarrow%200.%20\lambda%20x%20%3A%20t.%20fx), not as the term ![equation](https://latex.codecogs.com/png.latex?\texttt{fix}%20f%20%3A%20(\forall%20t.%20t%20\rightarrow%200%29.\Lambda%20t.%20\lambda%20x%20%3A%20t.%20f[t]x).)
+
+OCaml allows polymorphic recursion to the programmer so diligent as to provide a type
+annotation at the definition site of the function.
+
+```ocaml
+(* This typechecks. *)
+let rec size_complete : type a. a complete_tree -> int = function
+  | End -> 0
+  | Depth (_, rest) -> 1 + 2 * size_complete rest
+```
+
+## Computing with complete trees
+

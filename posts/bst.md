@@ -161,24 +161,142 @@ let rec bad_exists_bst : type a. (a -> order) -> a complete_tree -> bool =
 This seems like it might work, if not only because it type-checks. But, running our newly-defined function on some trees reveals a problem.
 
 ```ocaml
-# let contains n = bad_exists_bst (function
-  | x when n > x -> Gt
-  | x when n < x -> Lt
-  | _ -> Eq);;
-val contains : 'a -> 'a complete_tree -> bool = <fun>
+# let f5 = function
+  | x when 5 > x -> Gt
+  | x when 5 < x -> Lt
+  | _ -> Eq;;
+val f5 : int -> order
 
-# contains 5 (Depth (5, End));;
+# bad_exists_bst f5 (Depth (5, End));;
 - : bool = true (* Ok... *)
 
-# contains 5 (Depth (3, End));;
+# bad_exists_bst f5 (Depth (3, End));;
 - : bool = false (* Right... *)
 
-# contains 5 (Depth (3, Depth ((1, 5), End)));;
+# bad_exists_bst f5 (Depth (3, Depth ((1, 5), End)));;
 - : bool = true (* Nice *)
 
-# contains 5 (Depth (3, Depth ((1, 4), End)));;
+# bad_exists_bst f5 (Depth (3, Depth ((1, 4), End)));;
 - : bool = false (* Ok *)
 
-# contains 5 (Depth (3, Depth ((1, 6), Depth (((0, 2), (5, 7)), End))));;
+# bad_exists_bst f5 (Depth (3, Depth ((1, 6), Depth (((0, 2), (5, 7)), End))));;
 - : bool = false (* Huh????? *)
 ```
+
+The problem originates in the order that the `fst` and `snd` operations are accumulated. `bad_exists_bst` creates a _stack_ (as opposed to a queue) of `fst` and `snd` functions composed with the original `f`, so that the most recently encountered element determines whether the recursive call is made with `fst` or `snd` as the outermost function. For example, considering the tree in the example above, the trace of recursive calls is problematic:
+
+```ocaml
+bad_exists_bst f5 (Depth (3, Depth ((1, 6), Depth (((0, 2), (5, 7)), End))))
+  (* f5 3 evaluates to Gt *)
+  ===> bad_exists_bst (fun (_, r) -> f5 r) (Depth ((1, 6), Depth (((0, 2), (5, 7)), End)))
+  (* (fun (_, r) -> f5 r) (1, 6) evaluates to Lt *)
+  ===> bad_exists_bst (fun (l, _) -> (fun (_, r) -> f5 r) l) (Depth (((0, 2), (5, 7)), End))
+```
+
+Now, the problem is more clear. The predicate first looks in the left subtree `(0, 2)` rather
+than the right subtree `(5, 7)`. We need to invert the order in which the `fst` and `snd` operations are composed.
+
+It would be nice to accumulate a function argument that looks something like this on
+successive recursive calls:
+
+```ocaml
+fun x -> x           (* : forall a. a -> a *)
+fun x -> fst x       (* : forall a. a * a -> a *)
+fun x -> snd (fst x) (* : forall a. (a * a) * (a * a) -> a *)
+```
+
+However, what would the type of this argument be? If the predicate is over type `a` and the current recursive call is considering a tree of type `b complete_tree`, it might seem enough to have the type of the accumulated function be `b -> a`. However, we need also to "lift" this function to have type `b * b -> a * a` for the next recursive call. This calls for a recursive type.
+
+```ocaml
+type ('a, 'b) tuple_fn = {
+  apply : 'b -> 'a;
+  lift : unit -> ('a * 'a, 'b * 'b) tuple_fn;
+}
+```
+
+The `lift` field is suspended; this would not be necessary in a lazy language like Haskell.
+
+The identity function is one example of a `tuple_fn`:
+
+```ocaml
+let rec id_fn = type a. (a, a) tuple_fn = {
+  apply = (fun x -> x);
+  lift = (fun () -> id_fn);
+}
+```
+
+We can also write functions that compose `fst` or `snd` with a `tuple_fn`, in the correct order (unlike `bad_exists_bst`).
+
+```ocaml
+let rec compose_fst : type a b. (a, b) tuple_fn -> (a, b * b) tuple_fn =
+  fun f ->
+    let next = f.lift () in {
+      apply = (fun x -> fst (next.apply x));
+      lift = (fun () -> compose_fst next);
+    }
+
+let rec compose_snd : type a b. (a, b) tuple_fn -> (a, b * b) tuple_fn =
+  fun f ->
+    let next = f.lift () in {
+      apply = (fun x -> snd (next.apply x));
+      lift = (fun () -> compose_snd next);
+    }
+```
+
+To avoid the code duplication, we can use rank-2 types:
+
+```ocaml
+module Fst_or_snd = struct
+  type t = {
+    apply : 'a. 'a * 'a -> 'a;
+  }
+  let fst = { apply = fst }
+  let snd = { apply = snd }
+end
+
+let rec compose : type a b. Fst_or_snd.t -> (a, b) tuple_fn -> (a, b * b) tuple_fn =
+  fun fs f ->
+    let next = f.lift () in {
+      apply = (fun x -> fs.apply (next.apply x));
+      lift = (fun () -> compose fs next);
+    }
+```
+
+We did it!
+
+```
+let exists_bst (p : 'a -> order) =
+  let rec go : type b. ('a, b) tuple_fn -> b complete_tree -> bool =
+    fun f t -> match t with
+      | End -> false
+      | Depth (x, rest) ->
+        match p (f.apply x) with
+        | Eq -> true
+        | Lt -> go (compose Fst_or_snd.fst f) rest
+        | Gt -> go (compose Fst_or_snd.snd f) rest
+  in
+  go id_fn
+```
+
+We can now run our tests from before:
+
+```ocaml
+# exists_bst f5 (Depth (5, End));;
+- : bool = true
+
+# exists_bst f5 (Depth (3, Depth ((1, 5), End)));;
+- : bool = true
+
+# exists_bst f5 (Depth (3, Depth ((1, 6), Depth (((0, 2), (5, 7)), End))));;
+- : bool = true
+
+# exists_bst f5 (Depth (3, Depth ((1, 6), Depth (((0, 2), (4, 7)), End))));;
+- : bool = false
+```
+
+There are certainly many more functions you can write over these complete trees, but my hope is that these examples provide an overview of some of the problems you could face.
+
+## Exercises
+What is the asymptotic running time of `exists_bst`, and why is it worse than typical binary searches on a balanced tree?
+
+Try defining `find_bst`. It's a surprisingly simple transformation of `exists_bst`.

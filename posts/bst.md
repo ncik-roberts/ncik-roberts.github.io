@@ -80,6 +80,7 @@ let rec exists (f : 'a -> bool) (t : 'a complete_tree) : bool =
 But what to replace the ellipses with? I want to recursively determine whether `rest` contains an element that satisfies `f`, but, since `rest` is of type `('a * 'a) complete_tree`, I must construct a new predicate that operates on pairs of elements:
 
 ```ocaml
+(* This will typecheck only after we annotate the type correctly. *)
 let rec exists (p : 'a -> bool) (t : 'a complete_tree) : bool =
   match t with
   | End -> false
@@ -105,6 +106,7 @@ let (<|>) a b = match a with
   | Some _ -> a
   | _ -> b ()
 
+(* This will typecheck only after we annotate the type correctly. *)
 let rec find' (f : 'a -> 'b option) (t : 'a complete_tree) : 'b option =
   match t with
   | End -> None
@@ -125,7 +127,7 @@ let rec find' : type a. (a -> 'b option) -> a complete_tree -> 'b option =
     | Depth (x, rest) ->
       f x <|> fun () ->
         let f' (l, r) = f l <|> fun () -> f r in
-        find' f' xs
+        find' f' rest
 
 let find p = find' (fun x -> if p x then Some x else None)
 ```
@@ -223,7 +225,7 @@ The `lift` field is suspended; this would not be necessary in a lazy language li
 The identity function is one example of a `tuple_fn`:
 
 ```ocaml
-let rec id_fn = type a. (a, a) tuple_fn = {
+let rec id_fn : type a. (a, a) tuple_fn = {
   apply = (fun x -> x);
   lift = (fun () -> id_fn);
 }

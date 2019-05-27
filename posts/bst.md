@@ -71,13 +71,13 @@ Writing a size function is pass&eacute;. There is so much more to compute.
 Given a predicate over elements, you might want to know whether a complete tree contains an element that satisfies the predicate. To start out, you can write almost mechanically:
 
 ```ocaml
-let rec exists (f : 'a -> bool) (t : 'a complete_tree) : bool =
+let rec exists (p : 'a -> bool) (t : 'a complete_tree) : bool =
   match t with
   | End -> false
   | Depth (x, rest) -> p x || ...
 ```
 
-But what to replace the ellipses with? I want to recursively determine whether `rest` contains an element that satisfies `f`, but, since `rest` is of type `('a * 'a) complete_tree`, I must construct a new predicate that operates on pairs of elements:
+But what to replace the ellipses with? I want to recursively determine whether `rest` contains an element that satisfies `p`, but, since `rest` is of type `('a * 'a) complete_tree`, I must construct a new predicate that operates on pairs of elements:
 
 ```ocaml
 (* This will typecheck only after we annotate the type correctly. *)

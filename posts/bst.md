@@ -264,7 +264,7 @@ let rec compose : type a b. Fst_or_snd.t -> (a, b) tuple_fn -> (a, b * b) tuple_
 
 We did it!
 
-```
+```ocaml
 let exists_bst (p : 'a -> order) =
   let rec go : type b. ('a, b) tuple_fn -> b complete_tree -> bool =
     fun f t -> match t with

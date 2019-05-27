@@ -80,13 +80,11 @@ let rec exists (f : 'a -> bool) (t : 'a complete_tree) : bool =
 But what to replace the ellipses with? I want to recursively determine whether `rest` contains an element that satisfies `f`, but, since `rest` is of type `('a * 'a) complete_tree`, I must construct a new predicate that operates on pairs of elements:
 
 ```ocaml
-let rec exists (f : 'a -> bool) (t : 'a complete_tree) : bool =
+let rec exists (p : 'a -> bool) (t : 'a complete_tree) : bool =
   match t with
   | End -> false
   | Depth (x, rest) ->
-      p x ||
-        let p (l, r) = p l || p r in
-        exists f rest
+    p x || exists (fun (l, r) -> p l || p r) rest
 ```
 
 And finally, to allow for polymorphic recursion, I will explicitly annotate the fact that `exists` may recursively be instantiated with a different type argument than the one with which it was originally called:
